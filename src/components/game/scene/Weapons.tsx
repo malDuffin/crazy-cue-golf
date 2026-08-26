@@ -85,7 +85,7 @@ export function WeaponPreview({
         </mesh>
       )}
       {weapon === "trebuchet" && (
-        <mesh userData={{ weapon: true }} position={[0, 0.16, 0.12]}>
+        <mesh userData={{ weapon: true }} position={[0, 0.08, 0.06]} scale={0.48}>
           <boxGeometry args={[0.7, 0.75, 1.2]} />
           <meshBasicMaterial
             transparent
@@ -197,7 +197,7 @@ function TrebuchetMesh({ power, strikeT }: { power: number; strikeT: number }) {
   const cwLen = 0.22;
 
   return (
-    <group>
+    <group scale={0.48}>
       <mesh castShadow position={[0.13, -0.042, 0.48]} receiveShadow>
         <boxGeometry args={[0.038, 0.03, 0.92]} />
         <meshStandardMaterial color="#6b4226" roughness={0.7} flatShading />
