@@ -2,8 +2,6 @@
 
 Low-poly tabletop golf. Cue, club, or trebuchet. Stroke play and Trick Chain.
 
-**Play:** [malduffin.github.io/crazy-cue-golf](https://malduffin.github.io/crazy-cue-golf/)
-
 Inspired by [Crazy Cue Golf on Face For Games](https://www.faceforgames.com). Built with React Three Fiber, Box3D, and Liquid Glass UI.
 
 ## Modes
@@ -37,4 +35,5 @@ npm run dev
 
 ## Physics
 
-Box3D WASM is vendored at `src/vendor/box3d.inline.mjs` (from [box3d.js](https://github.com/isaac-mason/box3d.js) 0.0.2, MIT). The engine is loaded from that file — no CDN and no Vite `node_modules/.vite/deps` fetch.
+Box3D WASM is vendored at `src/vendor/box3d.inline.mjs` (box3d.js 0.0.2, MIT). The engine loads from that file — no CDN and no Vite `node_modules/.vite/deps` fetch.
+

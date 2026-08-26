@@ -1,10 +1,11 @@
 /**
  * Live physics via Box3D WASM (https://github.com/isaac-mason/box3d.js).
+ * Engine is vendored at src/vendor/box3d.inline.mjs so the preview never
+ * fetches Vite's node_modules/.vite/deps chunk.
  * A second ghost world runs the same colliders so shot prediction never
  * disturbs the playable ball.
- * Engine binary is vendored at src/vendor/box3d.inline.mjs.
  */
-import type { Box3DModule, b3BodyId, b3WorldId, b3Quat } from "@/vendor/box3d";
+import type { Box3DModule, b3BodyId, b3WorldId, b3Quat } from "box3d.js";
 import Box3DFactory from "@/vendor/box3d.inline.mjs";
 import { buildCourseColliders, type Vec3 } from "@/lib/game/holes";
 
@@ -27,6 +28,7 @@ const FIXED_DT = 1 / 60;
 const MAX_STEPS = 4;
 const MAX_SPEED = 32.5;
 const PREVIEW_DT = 0.05;
+export const PHYSICS_GRAVITY = 10.5;
 
 function identityQuat(): b3Quat {
   return { v: { x: 0, y: 0, z: 0 }, s: 1 };
@@ -95,7 +97,7 @@ export class Box3DWorld {
 
     const makeWorld = (continuous: boolean) => {
       const worldDef = b3.b3DefaultWorldDef();
-      worldDef.gravity = { x: 0, y: -10.5, z: 0 };
+      worldDef.gravity = { x: 0, y: -PHYSICS_GRAVITY, z: 0 };
       worldDef.enableContinuous = continuous;
       worldDef.enableSleep = continuous;
       worldDef.restitutionThreshold = 0.15;
@@ -294,6 +296,8 @@ export class Box3DWorld {
     millAngle: number;
     cup: Vec3;
     lowPower?: boolean;
+    /** When set, used instead of impulse+loft so trebuchet lobs match live fire. */
+    velocity?: Vec3;
   }): PredictedPath {
     const empty: PredictedPath = {
       points: [],
@@ -311,7 +315,7 @@ export class Box3DWorld {
       this.b3.b3Body_SetTransform(this.ghostMill, p, q);
     }
 
-    const v0 = shotVelocity(opts.dir, opts.impulse, opts.loft);
+    const v0 = opts.velocity ?? shotVelocity(opts.dir, opts.impulse, opts.loft);
     this.b3.b3Body_SetLinearVelocity(this.ghostBall, v0);
     this.b3.b3Body_SetAngularVelocity(this.ghostBall, { x: 0, y: 0, z: 0 });
     this.b3.b3Body_SetAwake(this.ghostBall, true);

@@ -22,11 +22,17 @@ export function WeaponPreview({
   const strikeT = useGameStore((s) => s.strikeT);
   const ballSelected = useGameStore((s) => s.ballSelected);
   const uses = useGameStore((s) => s.weaponUses[s.weapon]);
+  const chainPlaying = useGameStore((s) => s.chainPlaying);
   const group = useRef<THREE.Group>(null);
 
   useFrame(({ clock }) => {
     if (!group.current) return;
-    const armed = uses > 0 || strikeT > 0.01 || shot === "charging" || shot === "flying";
+    const armed =
+      uses > 0 ||
+      chainPlaying ||
+      strikeT > 0.01 ||
+      shot === "charging" ||
+      shot === "flying";
     const show =
       ballSelected &&
       armed &&
@@ -73,8 +79,8 @@ export function WeaponPreview({
         </mesh>
       )}
       {weapon === "club" && (
-        <mesh userData={{ weapon: true }} position={[0.04, 0.28, -0.08]}>
-          <boxGeometry args={[0.38, 0.95, 0.7]} />
+        <mesh userData={{ weapon: true }} position={[0.02, 0.28, -0.22]}>
+          <boxGeometry args={[0.32, 0.95, 0.55]} />
           <meshBasicMaterial
             transparent
             opacity={0}
@@ -146,8 +152,9 @@ function CueMesh({ power, strikeT }: { power: number; strikeT: number }) {
 }
 
 function ClubMesh({ power, strikeT }: { power: number; strikeT: number }) {
-  // Vertical at 0 power. Grip is the pivot and never moves.
-  // Power rotates the whole club back around the grip; head stays above the felt.
+  // Grip is the pivot, above and behind the ball. At 0 power the iron
+  // sits on the back of the ball (local −Z = opposite aim). Power cocks
+  // the club back in the aim plane; the face stays toward +Z.
   const back = power * 1.15;
   const swing =
     strikeT > 0
@@ -155,7 +162,7 @@ function ClubMesh({ power, strikeT }: { power: number; strikeT: number }) {
       : back;
 
   return (
-    <group position={[0.09, 0.585, 0]} rotation={[swing, 0, 0]}>
+    <group position={[0.02, 0.585, -0.06]} rotation={[swing, 0, 0]}>
       <mesh castShadow position={[0, -0.07, 0]}>
         <cylinderGeometry args={[0.015, 0.014, 0.15, 8]} />
         <meshStandardMaterial color="#1a1814" roughness={0.92} />
@@ -168,8 +175,8 @@ function ClubMesh({ power, strikeT }: { power: number; strikeT: number }) {
         <cylinderGeometry args={[0.009, 0.011, 0.05, 8]} />
         <meshStandardMaterial color="#b8c0c8" roughness={0.35} metalness={0.65} />
       </mesh>
-      <mesh castShadow position={[0, -0.595, 0]} rotation={[0.08, 0, Math.PI / 2]}>
-        <boxGeometry args={[0.024, 0.07, 0.04]} />
+      <mesh castShadow position={[0, -0.595, 0.006]} rotation={[0.18, 0, 0]}>
+        <boxGeometry args={[0.072, 0.036, 0.022]} />
         <meshStandardMaterial
           color="#c5cdd6"
           roughness={0.28}

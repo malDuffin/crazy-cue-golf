@@ -39,6 +39,8 @@ type DragState = {
 type PendingStrike = {
   power: number;
   t: number;
+  windDur: number;
+  holdDur: number;
   impactAt: number;
   fired: boolean;
 };
@@ -471,17 +473,31 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
   const fireShot = useCallback(() => {
     const st = useGameStore.getState();
     if (st.shot === "flying" || pendingStrike.current) return;
+    if (restHold.current > 0 && restHold.current < 1) return;
     if (!(st.playMode === "chain" && st.chainPlaying) && st.weaponUses[st.weapon] <= 0) {
       setMessage(`No uses left on ${WEAPON_META[st.weapon].label}`);
       return;
     }
-    const pwr = Math.max(st.power, 0.05);
+    const chainReplay = st.playMode === "chain" && st.chainPlaying;
+    let pwr = Math.max(st.power, 0.05);
+    if (chainReplay) {
+      const q = st.chain[st.chainPlayIndex];
+      if (q) pwr = Math.max(q.power, 0.05);
+      setPower(0);
+    }
     const impactAt =
       st.weapon === "cue" ? 0.07 : st.weapon === "club" ? 0.15 : 0.13;
-    pendingStrike.current = { power: pwr, t: 0, impactAt, fired: false };
+    pendingStrike.current = {
+      power: pwr,
+      t: 0,
+      windDur: chainReplay ? 0.42 + pwr * 0.38 : 0,
+      holdDur: chainReplay ? 0.1 : 0,
+      impactAt,
+      fired: false,
+    };
     setShot("charging");
-    setStrikeT(0.001);
-    setPower(pwr);
+    setStrikeT(chainReplay ? 0 : 0.001);
+    if (!chainReplay) setPower(pwr);
   }, [setPower, setShot, setStrikeT]);
 
   useEffect(() => {
@@ -552,6 +568,7 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
   useEffect(() => {
     if (hitSerial <= 0) return;
     const st = useGameStore.getState();
+    if (st.playMode === "chain" && st.chainPlaying) return;
     if (
       st.phase === "playing" &&
       st.ballSelected &&
@@ -877,6 +894,7 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
           dir: computed.dir,
           impulse: computed.impulse,
           loft: computed.loft,
+          velocity: computed.velocity,
           millAngle: 0,
           cup: hole.cup,
           lowPower,
@@ -897,19 +915,29 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
     if (pendingStrike.current) {
       const ps = pendingStrike.current;
       ps.t += d;
-      const tNorm = Math.min(1, ps.t / Math.max(ps.impactAt * 1.6, 0.12));
-      setStrikeT(tNorm);
-      if (!ps.fired && ps.t >= ps.impactAt) {
-        ps.fired = true;
-        applyImpulse(ps.power);
-      }
-      if (ps.t >= ps.impactAt * 1.85) {
-        pendingStrike.current = null;
+      const windEnd = ps.windDur;
+      const holdEnd = ps.windDur + ps.holdDur;
+      if (ps.windDur > 0 && ps.t < holdEnd) {
+        const u = Math.min(1, ps.t / Math.max(windEnd, 0.001));
+        const eased = u * u * (3 - 2 * u);
+        setPower(ps.power * eased);
         setStrikeT(0);
+      } else {
+        const stt = ps.t - holdEnd;
+        const tNorm = Math.min(1, stt / Math.max(ps.impactAt * 1.6, 0.12));
+        setStrikeT(tNorm);
+        if (!ps.fired && stt >= ps.impactAt) {
+          ps.fired = true;
+          applyImpulse(ps.power);
+        }
+        if (stt >= ps.impactAt * 1.85) {
+          pendingStrike.current = null;
+          setStrikeT(0);
+        }
       }
     }
 
-    if (phase === "playing" && ballSelected) {
+    if (phase === "playing" && ballSelected && !stNow.chainPlaying) {
       if (keys.current.has("KeyA") || keys.current.has("ArrowLeft")) {
         const yaw = aimYaw + d * 1.4;
         setAim(yaw);
@@ -938,7 +966,8 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
       phase === "playing" &&
       ballSelected &&
       shot !== "flying" &&
-      !pendingStrike.current
+      !pendingStrike.current &&
+      !stNow.chainPlaying
     ) {
       const hand = tracking.hands.right ?? tracking.hands.left;
       const face = tracking.face;
@@ -1214,15 +1243,13 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
       flyingFrames.current += 1;
       if (flyingFrames.current > 24 && ballAsleep.current) {
         if (stNow.playMode === "chain" && stNow.chainPlaying) {
-          restHold.current += d;
-          if (restHold.current >= 1) {
-            restHold.current = 0;
+          if (restHold.current === 0 && !pendingStrike.current) {
             const q = stNow.chain[stNow.chainPlayIndex];
             if (q) world.snapBall(q.rest);
             const more = stNow.advanceChainPlay();
             if (more) {
               flyingFrames.current = 0;
-              fireShot();
+              restHold.current = 0.001;
             } else {
               stNow.finishChainPlay();
               resetShotIdle();
@@ -1242,8 +1269,19 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
           }
         }
       }
-    } else {
-      restHold.current = 0;
+    }
+
+    if (
+      stNow.chainPlaying &&
+      restHold.current > 0 &&
+      !pendingStrike.current &&
+      stNow.shot !== "flying"
+    ) {
+      restHold.current += d;
+      if (restHold.current >= 1) {
+        restHold.current = 0;
+        fireShot();
+      }
     }
 
     if (phase === "playing" && !sinkLock.current && world.checkCup(stats.hole)) {
@@ -1319,7 +1357,7 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
         origin={aimPos.current}
         yaw={aimYaw}
         power={power}
-        visible={ballSelected && shot !== "flying"}
+        visible={ballSelected && shot !== "flying" && !chainPlaying}
       />
       <PhysicsPathPreview
         pathRef={predPath}

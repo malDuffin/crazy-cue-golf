@@ -50,6 +50,13 @@ export type StaticBox = {
   kind: "felt" | "wood" | "rail" | "ramp" | "block" | "accent";
 };
 
+/** Tabletop felt half-extents. Full board is 2× this; largest side drives trebuchet max range. */
+export const FELT_HALF = { x: 1.7, y: 0.06, z: 3.6 } as const;
+
+export function courseLargestSide(): number {
+  return Math.max(FELT_HALF.x, FELT_HALF.z) * 2;
+}
+
 /** Shared static colliders for the whole tabletop (visuals mirror these). */
 export function buildCourseColliders(): StaticBox[] {
   const boxes: StaticBox[] = [];
@@ -57,7 +64,7 @@ export function buildCourseColliders(): StaticBox[] {
   // Main felt board
   boxes.push({
     pos: { x: 0, y: -0.06, z: 0.5 },
-    half: { x: 1.7, y: 0.06, z: 3.6 },
+    half: { x: FELT_HALF.x, y: FELT_HALF.y, z: FELT_HALF.z },
     kind: "felt",
   });
 
