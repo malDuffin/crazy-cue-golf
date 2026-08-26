@@ -321,13 +321,23 @@ export class Box3DWorld {
     this.b3.b3Body_SetAwake(this.ghostBall, true);
     this.clampSpeed(this.ghostBall);
 
-    const maxSteps = Math.ceil(3 / FIXED_DT); // 180
+    const maxSeconds = opts.lowPower ? 5 : 8;
+    const maxSteps = Math.ceil(maxSeconds / FIXED_DT);
     const sub = 4;
     const sampleEvery = Math.round(PREVIEW_DT / FIXED_DT); // 3 frames
     const points: Vec3[] = [copyVec(opts.origin)];
     const speeds: number[] = [0];
     let sunk = false;
     let rest = copyVec(opts.origin);
+
+    // Don't treat the apex of a ramp (speed ~0 for a few frames) as rest.
+    // The ball must stay slow AND stay put before we stop the ghost.
+    const SETTLE_SPEED = 0.045;
+    const SETTLE_FRAMES = Math.round(0.42 / FIXED_DT);
+    const SETTLE_MOVE = 0.016;
+    const MIN_FRAMES = Math.round(0.22 / FIXED_DT);
+    let slowFrames = 0;
+    let settleAnchor = copyVec(opts.origin);
 
     for (let i = 0; i < maxSteps; i++) {
       this.b3.b3World_Step(this.ghostWorld, FIXED_DT, sub);
@@ -356,12 +366,26 @@ export class Box3DWorld {
         }
         break;
       }
-      if (i > 18 && speed < 0.04) {
-        if ((i + 1) % sampleEvery !== 0) {
-          points.push(copyVec(rest));
-          speeds.push(speed);
+      if (i >= MIN_FRAMES && speed < SETTLE_SPEED) {
+        if (slowFrames === 0) settleAnchor = copyVec(rest);
+        slowFrames += 1;
+        const moved = Math.hypot(
+          rest.x - settleAnchor.x,
+          rest.y - settleAnchor.y,
+          rest.z - settleAnchor.z,
+        );
+        if (moved >= SETTLE_MOVE) {
+          slowFrames = 0;
+          settleAnchor = copyVec(rest);
+        } else if (slowFrames >= SETTLE_FRAMES) {
+          if ((i + 1) % sampleEvery !== 0) {
+            points.push(copyVec(rest));
+            speeds.push(speed);
+          }
+          break;
         }
-        break;
+      } else {
+        slowFrames = 0;
       }
     }
 

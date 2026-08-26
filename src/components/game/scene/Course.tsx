@@ -221,8 +221,22 @@ function LowPolyTree({
 
 const PATH_DOTS = 64;
 
+function samplePath(
+  pts: { x: number; y: number; z: number }[],
+  maxDots: number,
+): { x: number; y: number; z: number }[] {
+  if (pts.length <= maxDots) return pts;
+  const last = pts.length - 1;
+  const out: { x: number; y: number; z: number }[] = [];
+  for (let i = 0; i < maxDots; i++) {
+    const idx = Math.round((i / (maxDots - 1)) * last);
+    out.push(pts[idx]!);
+  }
+  return out;
+}
+
 /**
- * Ghost balls every 0.05s of the Box3D predicted shot (up to 3s).
+ * Ghost balls along the Box3D predicted shot, including roll-back to rest.
  */
 export function PhysicsPathPreview({
   pathRef,
@@ -241,8 +255,8 @@ export function PhysicsPathPreview({
 
   useFrame(() => {
     if (!group.current) return;
-    const pts = pathRef.current;
-    const show = visible && pts.length > 1;
+    const pts = samplePath(pathRef.current, PATH_DOTS);
+    const show = visible && pathRef.current.length > 1;
     group.current.visible = show;
     if (!show) {
       if (ghost.current) ghost.current.visible = false;
@@ -250,7 +264,7 @@ export function PhysicsPathPreview({
       return;
     }
 
-    const n = Math.min(PATH_DOTS, pts.length);
+    const n = pts.length;
     const sunkNow = sunkRef.current;
     const lift = 0.04;
     const last = pts[n - 1]!;
@@ -348,22 +362,36 @@ export function PhysicsPathPreview({
 }
 
 const _orbWorld = new THREE.Vector3();
+const _orbColor = new THREE.Color();
+const POWER_WHITE = new THREE.Color("#f4f6fb");
+const POWER_GREEN = new THREE.Color("#3ee07a");
+const POWER_RED = new THREE.Color("#ff4338");
+const DRAG_RING_R = 0.47;
+
+function powerTint(power: number, out: THREE.Color) {
+  const p = THREE.MathUtils.clamp(power, 0, 1);
+  if (p < 0.5) return out.copy(POWER_WHITE).lerp(POWER_GREEN, p / 0.5);
+  return out.copy(POWER_GREEN).lerp(POWER_RED, (p - 0.5) / 0.5);
+}
 
 export function CueOrbitGuide({
   origin,
   yaw,
   power,
   visible,
+  dragging,
 }: {
   origin: THREE.Vector3;
   yaw: number;
   power: number;
   visible: boolean;
+  dragging: boolean;
 }) {
   const group = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
   const orb = useRef<THREE.Mesh>(null);
   const glow = useRef<THREE.Mesh>(null);
+  const vis = useRef<THREE.Mesh>(null);
   const aimArrow = useRef<THREE.Group>(null);
   const { scene } = useThree();
 
@@ -380,49 +408,66 @@ export function CueOrbitGuide({
     group.current.position.set(origin.x, origin.y + 0.04, origin.z);
 
     if (ring.current) {
-      const r = 1 + power * 0.7;
-      ring.current.scale.setScalar(r);
       const mat = ring.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.28 + power * 0.3 + Math.sin(t * 4) * 0.06;
+      mat.opacity = dragging
+        ? 0.34 + power * 0.22 + Math.sin(t * 4) * 0.05
+        : 0.2 + Math.sin(t * 2.2) * 0.04;
+      powerTint(dragging ? power : 0, _orbColor);
+      if (dragging) mat.color.copy(_orbColor);
+      else mat.color.set("#cfd6e0");
     }
 
     const buttYaw = yaw + Math.PI;
-    const dist = 0.42 + power * 0.55;
-    const ox = Math.sin(buttYaw) * dist;
-    const oy = 0.1;
-    const oz = Math.cos(buttYaw) * dist;
+    const ox = Math.sin(buttYaw) * DRAG_RING_R;
+    const oy = 0.08;
+    const oz = Math.cos(buttYaw) * DRAG_RING_R;
 
     if (orb.current) {
       orb.current.position.set(ox, oy, oz);
-      orb.current.scale.setScalar(1 + Math.sin(t * 5.5) * 0.08);
       orb.current.getWorldPosition(_orbWorld);
       const ud = scene.userData as { cueOrbPos?: THREE.Vector3 };
       if (!ud.cueOrbPos) ud.cueOrbPos = new THREE.Vector3();
       ud.cueOrbPos.copy(_orbWorld);
     }
+
+    const showOrb = dragging;
     if (glow.current) {
+      glow.current.visible = showOrb;
       glow.current.position.set(ox, oy, oz);
-      glow.current.scale.setScalar(1.15 + power * 0.35 + Math.sin(t * 5.5) * 0.1);
+      glow.current.scale.setScalar(1.2 + power * 0.45 + Math.sin(t * 6) * 0.08);
       const mat = glow.current.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.22 + power * 0.28;
+      powerTint(power, _orbColor);
+      mat.color.copy(_orbColor);
+      mat.opacity = 0.28 + power * 0.35;
+    }
+    if (vis.current) {
+      vis.current.visible = showOrb;
+      vis.current.position.set(ox, oy, oz);
+      vis.current.scale.setScalar(1 + power * 0.18 + Math.sin(t * 6) * 0.06);
+      const mat = vis.current.material as THREE.MeshStandardMaterial;
+      powerTint(power, _orbColor);
+      mat.color.copy(_orbColor);
+      mat.emissive.copy(_orbColor);
+      mat.emissiveIntensity = 0.55 + power * 0.7;
     }
     if (aimArrow.current) {
-      const ad = 0.48 + power * 0.75;
+      aimArrow.current.visible = dragging;
+      const ad = 0.48 + power * 0.35;
       aimArrow.current.position.set(Math.sin(yaw) * ad, 0.04, Math.cos(yaw) * ad);
       aimArrow.current.rotation.y = yaw;
       aimArrow.current.rotation.x = Math.PI / 2;
-      aimArrow.current.scale.setScalar(0.8 + power * 0.7);
+      aimArrow.current.scale.setScalar(0.8 + power * 0.45);
     }
   });
 
   return (
     <group ref={group}>
       <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.32, 0.5, 48]} />
+        <ringGeometry args={[0.4, 0.54, 48]} />
         <meshBasicMaterial
-          color="#7ef0c8"
+          color="#cfd6e0"
           transparent
-          opacity={0.3}
+          opacity={0.22}
           depthWrite={false}
           side={THREE.DoubleSide}
           toneMapped={false}
@@ -438,18 +483,28 @@ export function CueOrbitGuide({
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh ref={glow}>
+      <mesh ref={glow} visible={false}>
         <sphereGeometry args={[0.11, 16, 16]} />
         <meshBasicMaterial
-          color="#ffe08a"
+          color="#f4f6fb"
           transparent
           opacity={0.28}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
-      <CueOrbVisual orbRef={orb} />
-      <group ref={aimArrow}>
+      <mesh ref={vis} userData={{ cueOrb: true }} castShadow visible={false}>
+        <sphereGeometry args={[0.09, 18, 18]} />
+        <meshStandardMaterial
+          color="#f4f6fb"
+          emissive="#f4f6fb"
+          emissiveIntensity={0.55}
+          metalness={0.2}
+          roughness={0.28}
+          toneMapped={false}
+        />
+      </mesh>
+      <group ref={aimArrow} visible={false}>
         <mesh>
           <coneGeometry args={[0.05, 0.16, 8]} />
           <meshBasicMaterial
@@ -462,28 +517,6 @@ export function CueOrbitGuide({
         </mesh>
       </group>
     </group>
-  );
-}
-
-function CueOrbVisual({ orbRef }: { orbRef: React.RefObject<THREE.Mesh | null> }) {
-  const vis = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (!vis.current || !orbRef.current) return;
-    vis.current.position.copy(orbRef.current.position);
-    vis.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 5.5) * 0.1);
-  });
-  return (
-    <mesh ref={vis} userData={{ cueOrb: true }} castShadow>
-      <sphereGeometry args={[0.09, 18, 18]} />
-      <meshStandardMaterial
-        color="#f0c14a"
-        emissive="#e0c36a"
-        emissiveIntensity={0.85}
-        metalness={0.35}
-        roughness={0.25}
-        toneMapped={false}
-      />
-    </mesh>
   );
 }
 

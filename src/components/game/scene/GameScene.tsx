@@ -332,6 +332,7 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
   const lastPredKey = useRef("");
   const aimPos = useRef(new THREE.Vector3(0, 0.12, -2.6));
   const restHold = useRef(0);
+  const flySettle = useRef(0);
 
   const hole = getHole(stats.hole);
   const { camera, gl, scene } = useThree();
@@ -1241,7 +1242,10 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
 
     if (shot === "flying") {
       flyingFrames.current += 1;
-      if (flyingFrames.current > 24 && ballAsleep.current) {
+      if (ballAsleep.current) flySettle.current += d;
+      else flySettle.current = 0;
+      if (flyingFrames.current > 24 && flySettle.current > 0.42) {
+        flySettle.current = 0;
         if (stNow.playMode === "chain" && stNow.chainPlaying) {
           if (restHold.current === 0 && !pendingStrike.current) {
             const q = stNow.chain[stNow.chainPlayIndex];
@@ -1269,6 +1273,8 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
           }
         }
       }
+    } else {
+      flySettle.current = 0;
     }
 
     if (
@@ -1358,6 +1364,7 @@ export function GameScene({ physicsRef, onRequestHoleReset }: Props) {
         yaw={aimYaw}
         power={power}
         visible={ballSelected && shot !== "flying" && !chainPlaying}
+        dragging={shot === "aiming" || shot === "charging"}
       />
       <PhysicsPathPreview
         pathRef={predPath}

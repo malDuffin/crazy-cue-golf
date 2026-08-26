@@ -381,9 +381,10 @@ export function HUD({
                 ball. Camera dollies in and your weapon appears.
               </li>
               <li>
-                <strong className="text-[var(--color-fg)]">3. Aim</strong> — drag the cue orb,
-                club, or trebuchet to set direction and power. Release to lock — the ball
-                will not fire yet. Each weapon has 0–2 uses per hole (at least 3 total).
+                <strong className="text-[var(--color-fg)]">3. Aim</strong> — drag around the
+                ball to set direction and power. The handle sits on the drag circle and
+                goes white → green → red with power. Release to lock — the ball will not
+                fire yet. Each weapon has 0–2 uses per hole (at least 3 total).
               </li>
               <li>
                 <strong className="text-[var(--color-fg)]">4. Hit now / Hit ball</strong> —
