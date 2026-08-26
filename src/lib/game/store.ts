@@ -31,18 +31,24 @@ export type TrackingSnapshot = {
 };
 
 export type HandPose = {
+  /** Palm center in normalized image coords 0-1 (mirrored for selfie) */
   x: number;
   y: number;
+  /** Pinch strength 0-1 */
   pinch: number;
+  /** Openness 0-1 */
   open: number;
+  /** Wrist→middle knuckle direction in screen space */
   dirX: number;
   dirY: number;
+  /** Confidence */
   score: number;
 };
 
 export type FacePose = {
   x: number;
   y: number;
+  /** Approximate head yaw / pitch from landmarks, -1..1 */
   yaw: number;
   pitch: number;
   mouthOpen: number;
@@ -109,7 +115,9 @@ type GameStore = {
   power: number;
   aimYaw: number;
   aimPitch: number;
+  /** Ball selected for a shot — camera focuses; drag to strike */
   ballSelected: boolean;
+  /** 0..1 strike flourish after release (weapon anim) */
   strikeT: number;
   stats: GameStats;
   trackingMode: TrackingMode;
@@ -121,14 +129,19 @@ type GameStore = {
   showHelp: boolean;
   mobile: boolean;
   lowPower: boolean;
+  /** Incremented when HUD / keyboard asks to strike the locked shot */
   hitSerial: number;
+  /** Remaining uses for this hole (0–2 each, at least 3 total) */
   weaponUses: WeaponUses;
+  /** Snapshot of the hole's rolled kit (for redo) */
   weaponUsesHole: WeaponUses;
   playMode: PlayMode;
   chain: QueuedShot[];
   chainPlaying: boolean;
   chainPlayIndex: number;
+  /** Ghost-aim origin while setting up later chain shots */
   chainSetupOrigin: { x: number; y: number; z: number } | null;
+  /** Index of the shot being retuned (chain truncated after it). */
   editingIndex: number | null;
   lockSerial: number;
   chainPlaySerial: number;

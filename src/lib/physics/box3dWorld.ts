@@ -1,5 +1,5 @@
 /**
- * Live physics via Box3D WASM.
+ * Live physics via Box3D WASM (https://github.com/isaac-mason/box3d.js).
  * A second ghost world runs the same colliders so shot prediction never
  * disturbs the playable ball.
  */
@@ -263,6 +263,7 @@ export class Box3DWorld {
     this.applyExactVelocity(v);
   }
 
+  /** Frozen vector — preview and live both call this after a body reset. */
   applyExactVelocity(v: Vec3) {
     this.b3.b3Body_SetLinearVelocity(this.ball, { x: v.x, y: v.y, z: v.z });
     this.b3.b3Body_SetAngularVelocity(this.ball, { x: 0, y: 0, z: 0 });
@@ -270,6 +271,7 @@ export class Box3DWorld {
     this.clampSpeed(this.ball);
   }
 
+  /** Full reset + frozen velocity. This is the only live-fire path that matches the ghost. */
   launch(origin: Vec3, velocity: Vec3) {
     this.resetBody(this.ball, origin);
     this.applyExactVelocity(velocity);
@@ -279,6 +281,10 @@ export class Box3DWorld {
     this.resetBody(this.ball, pos);
   }
 
+  /**
+   * Run the same Box3D WASM solver on a ghost copy of the course.
+   * Returns sampled ball positions for the aim/power currently dialed in.
+   */
   predictShot(opts: {
     origin: Vec3;
     dir: Vec3;
@@ -297,6 +303,7 @@ export class Box3DWorld {
     if (!this.ready) return empty;
 
     this.resetBody(this.ghostBall, opts.origin);
+    // Freeze the mill so the preview is deterministic (no left/right drift)
     if (this.ghostMill) {
       const q = eulerToQuat(0, 0);
       const p = this.b3.b3Body_GetPosition(this.ghostMill);
@@ -309,9 +316,9 @@ export class Box3DWorld {
     this.b3.b3Body_SetAwake(this.ghostBall, true);
     this.clampSpeed(this.ghostBall);
 
-    const maxSteps = Math.ceil(3 / FIXED_DT);
+    const maxSteps = Math.ceil(3 / FIXED_DT); // 180
     const sub = 4;
-    const sampleEvery = Math.round(PREVIEW_DT / FIXED_DT);
+    const sampleEvery = Math.round(PREVIEW_DT / FIXED_DT); // 3 frames
     const points: Vec3[] = [copyVec(opts.origin)];
     const speeds: number[] = [0];
     let sunk = false;

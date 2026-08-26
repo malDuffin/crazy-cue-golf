@@ -54,12 +54,14 @@ export type StaticBox = {
 export function buildCourseColliders(): StaticBox[] {
   const boxes: StaticBox[] = [];
 
+  // Main felt board
   boxes.push({
     pos: { x: 0, y: -0.06, z: 0.5 },
     half: { x: 1.7, y: 0.06, z: 3.6 },
     kind: "felt",
   });
 
+  // Outer wood rails — tall enough to keep the ball in play
   const railH = 0.16;
   const railT = 0.1;
   boxes.push({
@@ -83,6 +85,7 @@ export function buildCourseColliders(): StaticBox[] {
     kind: "rail",
   });
 
+  // Hole 1 features
   boxes.push({
     pos: { x: -0.55, y: 0.08, z: -1.9 },
     half: { x: 0.55, y: 0.02, z: 0.35 },
@@ -101,6 +104,7 @@ export function buildCourseColliders(): StaticBox[] {
     kind: "ramp",
   });
 
+  // Hole 2 banks + channel
   boxes.push({
     pos: { x: -0.85, y: 0.12, z: 1.2 },
     half: { x: 0.12, y: 0.14, z: 0.7 },
@@ -123,6 +127,7 @@ export function buildCourseColliders(): StaticBox[] {
     kind: "accent",
   });
 
+  // Hole 3 half-pipe walls + high bank
   boxes.push({
     pos: { x: 1.15, y: 0.22, z: 3.15 },
     half: { x: 0.1, y: 0.28, z: 0.55 },
@@ -147,6 +152,7 @@ export function buildCourseColliders(): StaticBox[] {
     kind: "block",
   });
 
+  // Divider hole 1 / 2 with gate gap
   boxes.push({
     pos: { x: -1.05, y: 0.08, z: 0.2 },
     half: { x: 0.45, y: 0.1, z: 0.06 },
@@ -157,6 +163,8 @@ export function buildCourseColliders(): StaticBox[] {
     half: { x: 0.45, y: 0.1, z: 0.06 },
     kind: "wood",
   });
+
+  // Divider hole 2 / 3
   boxes.push({
     pos: { x: -1.0, y: 0.08, z: 2.7 },
     half: { x: 0.5, y: 0.1, z: 0.06 },
