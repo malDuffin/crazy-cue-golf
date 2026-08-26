@@ -461,12 +461,12 @@ function duckMusic(amount = 0.45, ms = 280) {
 /* ---------------- public SFX ---------------- */
 
 export const sfx = {
-  /** Live aim tone. Power brightens the pad; yaw plays pentatonic ticks. */
-  pull(power: number, yaw?: number) {
-    aimSet(power, yaw);
+  /** Aim drag is silent — no looping pad or ticks. */
+  pull(_power?: number, _yaw?: number) {
+    stopAim();
   },
-  aim(power: number, yaw?: number) {
-    aimSet(power, yaw);
+  aim(_power?: number, _yaw?: number) {
+    stopAim();
   },
   pullEnd() {
     stopAim();
@@ -506,9 +506,7 @@ export const sfx = {
       noiseBurst(0.04, 0.04 + p * 0.04, 0, 1600, 1.1, "bandpass");
     }
   },
-  charge() {
-    aimSet(Math.max(lastPullPower, 0.25));
-  },
+  charge() {},
   sink() {
     duckMusic(0.5, 700);
     osc(523.25, "sine", 0.14, 0.1, 0);
