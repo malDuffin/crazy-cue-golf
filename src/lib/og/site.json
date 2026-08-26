@@ -1,5 +1,6 @@
 {
   "title": "Crazy Cue Golf",
+  "description": "Low-poly XR mini-golf with a pool cue, golf club, and trebuchet.",
   "type": "x:game",
   "card": "custom",
   "color": "0C1018"
