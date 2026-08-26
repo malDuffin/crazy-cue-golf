@@ -2,6 +2,8 @@
 
 Low-poly tabletop golf. Cue, club, or trebuchet. Stroke play and Trick Chain.
 
+**Play:** [malduffin.github.io/crazy-cue-golf](https://malduffin.github.io/crazy-cue-golf/)
+
 Inspired by [Crazy Cue Golf on Face For Games](https://www.faceforgames.com). Built with React Three Fiber, Box3D, and Liquid Glass UI.
 
 ## Modes
