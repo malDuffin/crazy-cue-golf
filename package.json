@@ -15,7 +15,6 @@
     "@react-three/fiber": "^9.6.1",
     "@react-three/xr": "^6.6.30",
     "@tailwindcss/vite": "^4.1.0",
-    "box3d.js": "^0.0.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.510.0",
     "react": "^19.1.0",

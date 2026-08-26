@@ -9,5 +9,8 @@ export default defineConfig({
     alias: { "@": path.resolve(__dirname, "src") },
   },
   base: process.env.VITE_BASE || "/",
+  optimizeDeps: {
+    exclude: ["box3d.js", "box3d.js/inline"],
+  },
   server: { host: true, port: 5173 },
 });

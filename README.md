@@ -34,3 +34,7 @@ npm run dev
 - **Hit now** / **Set shot** / **Hit ball**
 - Keys `1` `2` `3` switch weapons (when uses remain)
 - Tap a chain number or landing ghost to edit that shot
+
+## Physics
+
+Box3D WASM is vendored at `src/vendor/box3d.inline.mjs` (from [box3d.js](https://github.com/isaac-mason/box3d.js) 0.0.2, MIT). The engine is loaded from that file — no CDN and no Vite `node_modules/.vite/deps` fetch.
