@@ -1,10 +1,14 @@
+import { useEffect, useState } from "react";
 import {
+  ChevronDown,
+  ChevronUp,
   Crosshair,
   Gamepad2,
   Glasses,
   Hand,
   HelpCircle,
   Keyboard,
+  LayoutGrid,
   Pause,
   RotateCcw,
   Target,
@@ -61,41 +65,70 @@ export function HUD({
   const hole = getHole(stats.hole);
   const cameraOn = trackingMode === "camera";
 
+  const [kitOpen, setKitOpen] = useState(() => !useGameStore.getState().mobile);
+  const [scoreOpen, setScoreOpen] = useState(() => !useGameStore.getState().mobile);
+
+  useEffect(() => {
+    if (mobile && ballSelected) setKitOpen(false);
+  }, [mobile, ballSelected]);
+
   if (phase === "menu" || phase === "boot") return null;
+
+  const dragging = shot === "aiming" || shot === "charging";
+  const locked = shot === "ready" && power > 0.05;
+  const canStrike = ballSelected && locked && weaponUses[weapon] > 0 && !chainPlaying;
+  const showPower = (dragging || locked) && ballSelected && power > 0.02;
+  const powerPct = Math.round(power * 100);
 
   return (
     <div className="hud-layer p-3 sm:p-4">
       <div className="pointer-events-none absolute left-0 right-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4 pt-[max(12px,env(safe-area-inset-top))]">
-        <GlassPanel className="pointer-events-auto rounded-[var(--radius-lg)] px-3 py-2 sm:px-4">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <GlassChip>
-              Hole <strong className="ml-1 tabular-nums">{stats.hole}/3</strong>
+        <GlassPanel className="pointer-events-auto max-w-[min(70vw,320px)] rounded-[var(--radius-lg)] px-2.5 py-1.5 sm:px-4 sm:py-2">
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 text-left"
+            onClick={() => setScoreOpen((o) => !o)}
+            aria-expanded={scoreOpen}
+            aria-label={scoreOpen ? "Hide score details" : "Show score details"}
+          >
+            <span className="tabular-nums text-sm font-semibold">
+              {stats.hole}<span className="text-[var(--color-muted)]">/3</span>
+            </span>
+            <GlassChip className="px-2 py-0.5 text-[10px]">Par {stats.par}</GlassChip>
+            <GlassChip
+              className={`px-2 py-0.5 text-[10px] ${
+                shot === "flying" ? "ring-1 ring-[var(--color-accent)]" : ""
+              }`}
+            >
+              {stats.strokes}
             </GlassChip>
-            <GlassChip>
-              Par <strong className="ml-1 tabular-nums">{stats.par}</strong>
-            </GlassChip>
-            <GlassChip className={shot === "flying" ? "ring-1 ring-[var(--color-accent)]" : ""}>
-              Strokes <strong className="ml-1 tabular-nums">{stats.strokes}</strong>
-            </GlassChip>
-            {ballSelected && playMode === "stroke" && (
-              <GlassChip className="ring-1 ring-[var(--color-accent)] text-[var(--color-accent)]">
-                Shot ready
-              </GlassChip>
-            )}
             {playMode === "chain" && (
-              <GlassChip className={chainPlaying ? "ring-1 ring-[var(--color-accent)]" : ""}>
-                Chain <strong className="ml-1 tabular-nums">{chain.length}</strong>
+              <GlassChip
+                className={`px-2 py-0.5 text-[10px] ${
+                  chainPlaying ? "ring-1 ring-[var(--color-accent)]" : ""
+                }`}
+              >
+                {chain.length} chained
               </GlassChip>
             )}
-            {!mobile && (
-              <GlassChip className="hidden sm:inline-flex">
-                Total <strong className="ml-1 tabular-nums">{stats.totalStrokes}</strong>
-              </GlassChip>
-            )}
-          </div>
-          <p className="mt-1.5 max-w-[min(70vw,280px)] text-xs text-[var(--color-muted)] sm:max-w-none">
-            {hole.name} — {message}
-          </p>
+            <span className="ml-auto inline-flex items-center gap-1.5">
+              {showPower && (
+                <span className="tabular-nums text-xs font-semibold text-[var(--color-accent)]">
+                  {powerPct}%
+                </span>
+              )}
+              {scoreOpen ? (
+                <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-muted)]" />
+              ) : (
+                <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-muted)]" />
+              )}
+            </span>
+          </button>
+          {scoreOpen && (
+            <p className="mt-1.5 max-w-[min(70vw,280px)] text-xs text-[var(--color-muted)]">
+              {hole.name} — {message}
+            </p>
+          )}
         </GlassPanel>
 
         <div
@@ -156,57 +189,62 @@ export function HUD({
         </div>
       )}
 
-      <div className="pointer-events-none absolute bottom-[max(12px,env(safe-area-inset-bottom))] left-0 right-0 flex flex-col items-center gap-3 p-3 sm:p-4">
-        {(shot === "charging" || shot === "aiming" || shot === "ready") &&
-          ballSelected &&
-          power > 0.02 && (
-          <GlassPanel className="pointer-events-none w-full max-w-xs rounded-[var(--radius-lg)] px-4 py-3">
+      <div className="pointer-events-none absolute bottom-[max(12px,env(safe-area-inset-bottom))] left-0 right-0 flex flex-col items-stretch gap-2 p-3 sm:items-center sm:p-4">
+        {showPower && !mobile && (
+          <GlassPanel className="pointer-events-none hidden w-full max-w-xs rounded-[var(--radius-lg)] px-4 py-2 sm:block">
             <div className="mb-1 flex items-center justify-between text-xs text-[var(--color-muted)]">
               <span className="inline-flex items-center gap-1">
                 <Target className="h-3.5 w-3.5" />
                 {weapon === "cue" ? "Cue power" : weapon === "club" ? "Swing" : "Trebuchet"}
               </span>
-              <span className="tabular-nums font-semibold text-[var(--color-fg)]">
-                {Math.round(power * 100)}%
-              </span>
+              <span className="tabular-nums font-semibold text-[var(--color-fg)]">{powerPct}%</span>
             </div>
             <div className="power-meter">
               <span style={{ width: `${power * 100}%` }} />
             </div>
-            <p className="mt-1.5 text-center text-[10px] text-[var(--color-muted)]">
-              {playMode === "chain"
-                ? shot === "ready"
-                  ? "Locked — Set shot, then Hit ball"
-                  : "Release to lock the preview · then Set shot"
-                : shot === "ready"
-                  ? "Locked — press Hit now"
-                  : "Release to lock the preview · then Hit now"}
-            </p>
           </GlassPanel>
         )}
 
-        {phase === "playing" &&
-          playMode === "stroke" &&
-          ballSelected &&
-          shot === "ready" &&
-          power > 0.05 &&
-          weaponUses[weapon] > 0 && (
-            <GlassButton
-              className="pointer-events-auto min-h-14 w-full max-w-xs text-lg font-semibold tracking-tight"
-              tabIndex={-1}
-              onClick={() => {
-                void unlockAudio();
-                requestHit();
-              }}
-            >
-              <Zap className="h-5 w-5" />
-              Hit now
-            </GlassButton>
-          )}
+        {phase === "playing" && playMode === "chain" && !chainPlaying && chain.length > 0 && (
+          <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5">
+            {chain.map((q, i) => (
+              <button
+                key={q.id}
+                type="button"
+                title={`${WEAPON_META[q.weapon].label} · ${Math.round(q.power * 100)}% · tap to edit`}
+                onClick={() => {
+                  if (audioEnabled) sfx.ui();
+                  editChainShot(i);
+                }}
+                className={`min-h-10 min-w-10 rounded-full px-3 text-sm font-semibold tabular-nums transition ${
+                  editingIndex === i
+                    ? "bg-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] ring-1 ring-[var(--color-accent)]"
+                    : "liquid-glass bg-[color-mix(in_oklab,white_10%,transparent)]"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {phase === "playing" && canStrike && playMode === "stroke" && (
+          <GlassButton
+            className="pointer-events-auto min-h-12 w-full max-w-xs self-center text-base font-semibold tracking-tight sm:min-h-14 sm:text-lg"
+            tabIndex={-1}
+            onClick={() => {
+              void unlockAudio();
+              requestHit();
+            }}
+          >
+            <Zap className="h-5 w-5" />
+            Hit now
+          </GlassButton>
+        )}
 
         {phase === "playing" && playMode === "chain" && !chainPlaying && (
-          <div className="pointer-events-auto flex w-full max-w-xs flex-col gap-2">
-            {ballSelected && shot === "ready" && power > 0.05 && weaponUses[weapon] > 0 && (
+          <div className="pointer-events-auto flex w-full max-w-xs flex-col gap-2 self-center">
+            {canStrike && (
               <GlassButton
                 className="min-h-12 w-full text-base font-semibold tracking-tight"
                 tabIndex={-1}
@@ -216,37 +254,16 @@ export function HUD({
                 }}
               >
                 <Target className="h-5 w-5" />
-                {editingIndex != null ? `Update shot ${editingIndex + 1}` : `Set shot ${chain.length + 1}`}
+                {editingIndex != null
+                  ? `Update shot ${editingIndex + 1}`
+                  : `Set shot ${chain.length + 1}`}
               </GlassButton>
             )}
             {chain.length > 0 && (
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                {chain.map((q, i) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    title={`${WEAPON_META[q.weapon].label} · ${Math.round(q.power * 100)}% · tap to edit`}
-                    onClick={() => {
-                      if (audioEnabled) sfx.ui();
-                      editChainShot(i);
-                    }}
-                    className={`min-h-10 min-w-10 rounded-full px-3 text-sm font-semibold tabular-nums transition ${
-                      editingIndex === i
-                        ? "bg-[color-mix(in_oklab,var(--color-accent)_35%,transparent)] ring-1 ring-[var(--color-accent)]"
-                        : "bg-[color-mix(in_oklab,white_10%,transparent)] hover:bg-[color-mix(in_oklab,white_18%,transparent)]"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                <span className="text-[10px] text-[var(--color-muted)]">tap to edit</span>
-              </div>
-            )}
-            <div className="flex gap-2">
-              {chain.length > 0 && (
+              <div className="flex gap-2">
                 <GlassButton
                   variant="ghost"
-                  className="min-h-12 flex-1"
+                  className="min-h-11 flex-1"
                   onClick={() => {
                     if (audioEnabled) sfx.ui();
                     undoChainShot();
@@ -255,10 +272,8 @@ export function HUD({
                   <Undo2 className="h-4 w-4" />
                   Undo
                 </GlassButton>
-              )}
-              {chain.length > 0 && (
                 <GlassButton
-                  className="min-h-12 min-w-0 flex-[2] text-base font-semibold"
+                  className="min-h-11 min-w-0 flex-[2] text-base font-semibold"
                   tabIndex={-1}
                   onClick={() => {
                     void unlockAudio();
@@ -268,100 +283,147 @@ export function HUD({
                   <Zap className="h-5 w-5" />
                   Hit ball
                 </GlassButton>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
-        <GlassPanel className="pointer-events-auto w-full max-w-lg rounded-[var(--radius-xl)] p-2 sm:p-3">
-          <div className="grid grid-cols-3 gap-2">
-            {WEAPONS.map((id) => {
-              const meta = WEAPON_META[id];
-              const active = weapon === id;
-              const uses = weaponUses[id];
-              const empty = uses <= 0;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={shot === "flying" || empty}
-                  onClick={() => {
-                    setWeapon(id);
-                    if (audioEnabled) sfx.ui();
-                  }}
-                  className={`relative min-h-[56px] rounded-[var(--radius-md)] px-2 py-2.5 text-left transition-transform active:scale-[0.98] ${
-                    empty
-                      ? "cursor-not-allowed opacity-40"
-                      : active
-                        ? "bg-[color-mix(in_oklab,white_22%,transparent)] shadow-[inset_0_1px_0_color-mix(in_oklab,white_45%,transparent)]"
-                        : "bg-[color-mix(in_oklab,white_6%,transparent)] hover:bg-[color-mix(in_oklab,white_12%,transparent)]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <div className="text-sm font-semibold tracking-tight">{meta.label}</div>
-                    <span
-                      className={`tabular-nums text-lg font-bold leading-none ${
+        <div className="pointer-events-auto flex w-full max-w-lg items-end gap-2 self-center">
+          <GlassButton
+            variant="ghost"
+            className="min-h-11 min-w-11 shrink-0 px-0 sm:min-h-12 sm:min-w-12"
+            aria-label={kitOpen ? "Hide weapons" : "Show weapons"}
+            aria-expanded={kitOpen}
+            onClick={() => {
+              if (audioEnabled) sfx.ui();
+              setKitOpen((o) => !o);
+            }}
+          >
+            <LayoutGrid className="h-5 w-5" />
+          </GlassButton>
+
+          {kitOpen ? (
+            <GlassPanel className="min-w-0 flex-1 rounded-[var(--radius-xl)] p-2 sm:p-3">
+              <div className="grid grid-cols-3 gap-2">
+                {WEAPONS.map((id) => {
+                  const meta = WEAPON_META[id];
+                  const active = weapon === id;
+                  const uses = weaponUses[id];
+                  const empty = uses <= 0;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={shot === "flying" || empty}
+                      onClick={() => {
+                        setWeapon(id);
+                        if (audioEnabled) sfx.ui();
+                      }}
+                      className={`relative min-h-[52px] rounded-[var(--radius-md)] px-2 py-2 text-left transition-transform active:scale-[0.98] ${
                         empty
-                          ? "text-[var(--color-muted)]"
+                          ? "cursor-not-allowed opacity-40"
                           : active
-                            ? "text-[var(--color-accent)]"
-                            : "text-[var(--color-fg)]"
+                            ? "bg-[color-mix(in_oklab,white_22%,transparent)] shadow-[inset_0_1px_0_color-mix(in_oklab,white_45%,transparent)]"
+                            : "bg-[color-mix(in_oklab,white_6%,transparent)] hover:bg-[color-mix(in_oklab,white_12%,transparent)]"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="text-sm font-semibold tracking-tight">{meta.label}</div>
+                        <span
+                          className={`tabular-nums text-lg font-bold leading-none ${
+                            empty
+                              ? "text-[var(--color-muted)]"
+                              : active
+                                ? "text-[var(--color-accent)]"
+                                : "text-[var(--color-fg)]"
+                          }`}
+                        >
+                          {uses}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 hidden text-[10px] leading-snug text-[var(--color-muted)] sm:line-clamp-2 sm:block sm:text-[11px]">
+                        {empty ? "No uses left" : meta.blurb}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[color-mix(in_oklab,white_12%,transparent)] pt-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <GlassButton variant="ghost" className="min-h-11 px-3 text-xs" onClick={onRestartHole}>
+                    <RotateCcw className="h-3.5 w-3.5" /> Redo
+                  </GlassButton>
+                  <GlassButton
+                    variant={cameraOn ? "primary" : "ghost"}
+                    className="min-h-11 px-3 text-xs"
+                    onClick={onEnableCamera}
+                  >
+                    <Webcam className="h-3.5 w-3.5" />
+                    {cameraOn && trackingReady ? "Cam on" : cameraOn ? "Cam…" : "Track"}
+                  </GlassButton>
+                  {xrSupported && (
+                    <GlassButton variant="ghost" className="min-h-11 px-3 text-xs" onClick={onEnterXR}>
+                      <Glasses className="h-3.5 w-3.5" /> XR
+                    </GlassButton>
+                  )}
+                </div>
+                <p className="flex items-center gap-1 text-[11px] text-[var(--color-muted)]">
+                  {trackingMode === "camera" ? (
+                    <>
+                      <Hand className="h-3.5 w-3.5 text-[var(--color-accent)]" /> See corner preview
+                    </>
+                  ) : trackingMode === "xr" ? (
+                    <>
+                      <Glasses className="h-3.5 w-3.5 text-[var(--color-accent)]" /> XR hands
+                    </>
+                  ) : (
+                    <>
+                      <Crosshair className="h-3.5 w-3.5" />
+                      {ballSelected ? "Aim, then strike" : mobile ? "Tap ball" : "Click ball"}
+                    </>
+                  )}
+                </p>
+              </div>
+            </GlassPanel>
+          ) : (
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              {WEAPONS.map((id) => {
+                const active = weapon === id;
+                const uses = weaponUses[id];
+                const empty = uses <= 0;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={shot === "flying" || empty}
+                    onClick={() => {
+                      setWeapon(id);
+                      if (audioEnabled) sfx.ui();
+                    }}
+                    className={`liquid-glass min-h-11 min-w-0 flex-1 rounded-[var(--radius-md)] px-2 py-1.5 text-center ${
+                      empty
+                        ? "opacity-40"
+                        : active
+                          ? "ring-1 ring-[var(--color-accent)]"
+                          : ""
+                    }`}
+                  >
+                    <div className="truncate text-[11px] font-semibold leading-none">
+                      {WEAPON_META[id].label.split(" ").pop()}
+                    </div>
+                    <div
+                      className={`mt-0.5 tabular-nums text-sm font-bold leading-none ${
+                        empty ? "text-[var(--color-muted)]" : "text-[var(--color-accent)]"
                       }`}
                     >
                       {uses}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-[var(--color-muted)] sm:text-[11px]">
-                    {empty ? "No uses left" : meta.blurb}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[color-mix(in_oklab,white_12%,transparent)] pt-2">
-            <div className="flex flex-wrap gap-1.5">
-              <GlassButton variant="ghost" className="min-h-11 px-3 text-xs" onClick={onRestartHole}>
-                <RotateCcw className="h-3.5 w-3.5" /> Redo
-              </GlassButton>
-              <GlassButton
-                variant={cameraOn ? "primary" : "ghost"}
-                className="min-h-11 px-3 text-xs"
-                onClick={onEnableCamera}
-              >
-                <Webcam className="h-3.5 w-3.5" />
-                {cameraOn && trackingReady ? "Cam on" : cameraOn ? "Cam…" : "Track"}
-              </GlassButton>
-              {xrSupported && (
-                <GlassButton variant="ghost" className="min-h-11 px-3 text-xs" onClick={onEnterXR}>
-                  <Glasses className="h-3.5 w-3.5" /> XR
-                </GlassButton>
-              )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-            <p className="flex items-center gap-1 text-[11px] text-[var(--color-muted)]">
-              {trackingMode === "camera" ? (
-                <>
-                  <Hand className="h-3.5 w-3.5 text-[var(--color-accent)]" /> See corner preview
-                </>
-              ) : trackingMode === "xr" ? (
-                <>
-                  <Glasses className="h-3.5 w-3.5 text-[var(--color-accent)]" /> XR hands
-                </>
-              ) : (
-                <>
-                  <Crosshair className="h-3.5 w-3.5" />
-                  {ballSelected
-                    ? mobile
-                      ? "Aim, then Hit now"
-                      : "Aim, then Hit now · Space"
-                    : mobile
-                      ? "Tap ball to play"
-                      : "Click ball to play"}
-                </>
-              )}
-            </p>
-          </div>
-        </GlassPanel>
+          )}
+        </div>
       </div>
 
       {showHelp && (
@@ -395,6 +457,10 @@ export function HUD({
               <li>
                 <strong className="text-[var(--color-fg)]">5. Zoom out</strong> — click away from
                 the ball (or press Esc) to return to the wide course view.
+              </li>
+              <li>
+                <strong className="text-[var(--color-fg)]">HUD</strong> — tap the score chip to
+                expand hole info. The grid button opens weapons, Redo, and Track.
               </li>
               <li>
                 <strong className="text-[var(--color-fg)]">Desktop</strong> — A/D aim, hold Space
