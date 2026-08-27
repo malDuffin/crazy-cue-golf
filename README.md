@@ -1,8 +1,18 @@
 # Crazy Cue Golf
 
 Low-poly tabletop golf. Cue, club, or trebuchet. Stroke play and Trick Chain.
+40 holes across Easy, Medium, Hard, and Expert. Star every sink.
 
 Inspired by [Crazy Cue Golf on Face For Games](https://www.faceforgames.com). Built with React Three Fiber, Box3D, and Liquid Glass UI.
+
+## Tours
+
+- **Easy** — wide cups, open greens, generous kits
+- **Medium** — ramps, banks, the mill
+- **Hard** — gates and chicanes
+- **Expert** — tiny cups, stingy kits
+
+Ten named holes each. Pick a tee from the menu grid. Ace = 3 stars, par or under = 2, finish = 1.
 
 ## Modes
 
@@ -36,4 +46,3 @@ npm run dev
 ## Physics
 
 Box3D WASM is vendored at `src/vendor/box3d.inline.mjs` (box3d.js 0.0.2, MIT). The engine loads from that file — no CDN and no Vite `node_modules/.vite/deps` fetch.
-
