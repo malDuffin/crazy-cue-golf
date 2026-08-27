@@ -12,7 +12,7 @@ Inspired by [Crazy Cue Golf on Face For Games](https://www.faceforgames.com). Bu
 - **Hard** — gates and chicanes
 - **Expert** — tiny cups, stingy kits
 
-Ten named holes each. Pick a tee from the menu grid. Ace = 3 stars, par or under = 2, finish = 1.
+Ten named holes each, with their own green, theme, and cup size. Pick a tee from the menu grid. Ace = 3 stars, par or under = 2, finish = 1. Stars stay in the browser.
 
 ## Modes
 
